@@ -1,7 +1,7 @@
-const MAX_TOOL_RESULT_CHARS = 8000;
-const MAX_TOOL_RESULT_LINES = 150;
-const TRUNCATION_HEAD_LINES = 100;
-const TRUNCATION_TAIL_LINES = 30;
+const MAX_TOOL_RESULT_CHARS = 3000;  // ~750 tokens
+const MAX_TOOL_RESULT_LINES = 80;
+const TRUNCATION_HEAD_LINES = 50;
+const TRUNCATION_TAIL_LINES = 20;
 
 export interface OptimizeResult {
   messages: any[];
@@ -22,7 +22,12 @@ export class TokenOptimizer {
       this.estimateTokens(JSON.stringify(messages)) +
       this.estimateTokens(JSON.stringify(system));
 
-    // Layer 1: Truncate tool results
+    // Layer 0: Clear old tool results (keep only last N)
+    if (this.clearOldToolResults(optimizedMessages)) {
+      optimizations.push("old_result_clearing");
+    }
+
+    // Layer 1: Truncate remaining tool results that are still too long
     if (this.truncateToolResults(optimizedMessages)) {
       optimizations.push("tool_result_truncation");
     }
@@ -32,14 +37,15 @@ export class TokenOptimizer {
       optimizations.push("git_status_pruning");
     }
 
-    // Layer 3: Inject conciseness instruction
-    if (this.injectConciseness(optimizedSystem)) {
-      optimizations.push("conciseness_injection");
-    }
-
+    // Measure BEFORE conciseness injection (it adds tokens but saves on output side)
     const optimizedTokens =
       this.estimateTokens(JSON.stringify(optimizedMessages)) +
       this.estimateTokens(JSON.stringify(optimizedSystem));
+
+    // Layer 3: Inject conciseness instruction (saves output tokens, not input)
+    if (this.injectConciseness(optimizedSystem)) {
+      optimizations.push("conciseness_injection");
+    }
 
     return {
       messages: optimizedMessages,
@@ -48,6 +54,42 @@ export class TokenOptimizer {
       inputTokensOriginal: originalTokens,
       inputTokensOptimized: optimizedTokens,
     };
+  }
+
+  private clearOldToolResults(messages: any[]): boolean {
+    // Find all tool_result blocks and keep only the last KEEP_RECENT ones with full content
+    const KEEP_RECENT = 6;
+    let modified = false;
+
+    const toolResultIndices: { msgIdx: number; blockIdx: number }[] = [];
+
+    for (let m = 0; m < messages.length; m++) {
+      const msg = messages[m];
+      if (!Array.isArray(msg.content)) continue;
+      for (let b = 0; b < msg.content.length; b++) {
+        if (msg.content[b].type === "tool_result") {
+          toolResultIndices.push({ msgIdx: m, blockIdx: b });
+        }
+      }
+    }
+
+    // Clear all but the last KEEP_RECENT tool results
+    const clearCount = toolResultIndices.length - KEEP_RECENT;
+    if (clearCount <= 0) return false;
+
+    for (let i = 0; i < clearCount; i++) {
+      const { msgIdx, blockIdx } = toolResultIndices[i];
+      const block = messages[msgIdx].content[blockIdx];
+
+      // Skip if already cleared
+      const content = typeof block.content === "string" ? block.content : JSON.stringify(block.content);
+      if (content.includes("[Cleared by CodePrune]") || content.length < 200) continue;
+
+      block.content = "[Cleared by CodePrune — old tool result removed to save tokens]";
+      modified = true;
+    }
+
+    return modified;
   }
 
   private truncateToolResults(messages: any[]): boolean {

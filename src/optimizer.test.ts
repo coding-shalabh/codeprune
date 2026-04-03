@@ -129,4 +129,44 @@ describe("TokenOptimizer", () => {
     const result = optimizer.optimize(messages, []);
     expect(result.inputTokensOptimized).toBeLessThan(result.inputTokensOriginal);
   });
+
+  test("clears old tool results keeping only recent ones", () => {
+    // Create 10 tool results — only last 6 should keep content
+    const messages: any[] = [];
+    for (let i = 0; i < 10; i++) {
+      messages.push({
+        role: "assistant",
+        content: [{ type: "tool_use", id: `tu_${i}`, name: "Read", input: {} }],
+      });
+      messages.push({
+        role: "user",
+        content: [
+          {
+            type: "tool_result",
+            tool_use_id: `tu_${i}`,
+            content: `This is a long tool result number ${i} with enough content to not be skipped. `.repeat(10),
+          },
+        ],
+      });
+    }
+
+    const result = optimizer.optimize(messages, []);
+    expect(result.optimizations).toContain("old_result_clearing");
+
+    // First 4 should be cleared, last 6 should keep content
+    const firstResult = result.messages[1].content[0];
+    expect(firstResult.content).toContain("Cleared by CodePrune");
+
+    const lastResult = result.messages[19].content[0];
+    expect(lastResult.content).toContain("tool result number 9");
+  });
+
+  test("conciseness injection does not increase measured input tokens", () => {
+    const system = [{ type: "text", text: "You are Claude Code..." }];
+
+    const result = optimizer.optimize([], system);
+    // optimizedTokens measured BEFORE injection, so should equal original
+    expect(result.inputTokensOptimized).toBe(result.inputTokensOriginal);
+    expect(result.optimizations).toContain("conciseness_injection");
+  });
 });
