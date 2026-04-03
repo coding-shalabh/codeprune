@@ -140,11 +140,13 @@ app.all("/v1/*", async (c) => {
   const responseBody = await upstreamResp.json();
 
   if (optimizeResult && responseBody.usage) {
+    // Use Anthropic's actual input_tokens as ground truth for optimized count
+    const actualInputTokens = responseBody.usage.input_tokens || optimizeResult.inputTokensOptimized;
     metrics.record({
       timestamp: Date.now(),
       model: body.model || "unknown",
       inputTokensOriginal: optimizeResult.inputTokensOriginal,
-      inputTokensOptimized: optimizeResult.inputTokensOptimized,
+      inputTokensOptimized: actualInputTokens,
       outputTokens: responseBody.usage.output_tokens || 0,
       cacheReadTokens: responseBody.usage.cache_read_input_tokens || 0,
       cacheWriteTokens: responseBody.usage.cache_creation_input_tokens || 0,
@@ -178,21 +180,25 @@ async function extractStreamUsage(
 
       const chunk = decoder.decode(value, { stream: true });
 
-      // Look for usage in SSE events — it appears in message_delta and message_stop events
-      const usageMatches = chunk.matchAll(/"usage"\s*:\s*(\{[^}]+\})/g);
-      for (const match of usageMatches) {
+      // Look for usage in SSE events — extract from data: JSON lines
+      const lines = chunk.split('\n');
+      for (const line of lines) {
+        if (!line.startsWith('data: ') || line === 'data: [DONE]') continue;
         try {
-          lastUsage = JSON.parse(match[1]);
+          const event = JSON.parse(line.slice(6));
+          if (event.usage) lastUsage = event.usage;
+          if (event.message?.usage) lastUsage = event.message.usage;
         } catch {}
       }
     }
 
     if (lastUsage) {
+      const actualInputTokens = lastUsage.input_tokens || optimizeResult.inputTokensOptimized;
       metrics.record({
         timestamp: Date.now(),
         model: model || "unknown",
         inputTokensOriginal: optimizeResult.inputTokensOriginal,
-        inputTokensOptimized: optimizeResult.inputTokensOptimized,
+        inputTokensOptimized: actualInputTokens,
         outputTokens: lastUsage.output_tokens || 0,
         cacheReadTokens: lastUsage.cache_read_input_tokens || 0,
         cacheWriteTokens: lastUsage.cache_creation_input_tokens || 0,

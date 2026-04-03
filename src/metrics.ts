@@ -133,7 +133,14 @@ export class MetricsStore {
         ? (totalSaved / row.totalInputOriginal) * 100
         : 0;
 
-    const costSaved = (totalSaved / 1_000_000) * 3;
+    // Model-aware cost: calculate per-row using actual model pricing
+    const costRows = this.db
+      .query(`SELECT model, SUM(input_tokens_original - input_tokens_optimized) as saved FROM requests GROUP BY model`)
+      .all() as any[];
+    let costSaved = 0;
+    for (const r of costRows) {
+      costSaved += (r.saved / 1_000_000) * getInputPrice(r.model);
+    }
 
     return {
       totalRequests: row.totalRequests,

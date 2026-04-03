@@ -123,7 +123,7 @@ export function getDashboardHTML(): string {
     }
     .tb:hover { color: var(--text); }
     .tb.on { background: var(--yellow); color: #000; }
-    .tb.p.on { background: var(--text); color: #000; }
+    .tb.p.on { background: var(--text); color: #fff; }
 
     /* ─── Hero ─── */
     .b-hero {
