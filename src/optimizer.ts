@@ -1,0 +1,160 @@
+const MAX_TOOL_RESULT_CHARS = 8000;
+const MAX_TOOL_RESULT_LINES = 150;
+const TRUNCATION_HEAD_LINES = 100;
+const TRUNCATION_TAIL_LINES = 30;
+
+export interface OptimizeResult {
+  messages: any[];
+  system: any[];
+  optimizations: string[];
+  inputTokensOriginal: number;
+  inputTokensOptimized: number;
+}
+
+export class TokenOptimizer {
+  optimize(messages: any[], system: any[]): OptimizeResult {
+    const optimizations: string[] = [];
+
+    let optimizedMessages = JSON.parse(JSON.stringify(messages));
+    let optimizedSystem = JSON.parse(JSON.stringify(system));
+
+    const originalTokens =
+      this.estimateTokens(JSON.stringify(messages)) +
+      this.estimateTokens(JSON.stringify(system));
+
+    // Layer 1: Truncate tool results
+    if (this.truncateToolResults(optimizedMessages)) {
+      optimizations.push("tool_result_truncation");
+    }
+
+    // Layer 2: Prune git status noise
+    if (this.pruneGitStatus(optimizedSystem)) {
+      optimizations.push("git_status_pruning");
+    }
+
+    // Layer 3: Inject conciseness instruction
+    if (this.injectConciseness(optimizedSystem)) {
+      optimizations.push("conciseness_injection");
+    }
+
+    const optimizedTokens =
+      this.estimateTokens(JSON.stringify(optimizedMessages)) +
+      this.estimateTokens(JSON.stringify(optimizedSystem));
+
+    return {
+      messages: optimizedMessages,
+      system: optimizedSystem,
+      optimizations,
+      inputTokensOriginal: originalTokens,
+      inputTokensOptimized: optimizedTokens,
+    };
+  }
+
+  private truncateToolResults(messages: any[]): boolean {
+    let modified = false;
+
+    for (const msg of messages) {
+      if (!Array.isArray(msg.content)) continue;
+
+      for (const block of msg.content) {
+        if (block.type !== "tool_result") continue;
+
+        // Handle string content
+        if (typeof block.content === "string") {
+          const truncated = this.truncateText(block.content);
+          if (truncated !== null) {
+            block.content = truncated;
+            modified = true;
+          }
+          continue;
+        }
+
+        // Handle array content (text blocks inside tool_result)
+        if (Array.isArray(block.content)) {
+          for (const inner of block.content) {
+            if (inner.type === "text" && typeof inner.text === "string") {
+              const truncated = this.truncateText(inner.text);
+              if (truncated !== null) {
+                inner.text = truncated;
+                modified = true;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return modified;
+  }
+
+  private truncateText(text: string): string | null {
+    if (text.length <= MAX_TOOL_RESULT_CHARS) return null;
+
+    const lines = text.split("\n");
+    if (lines.length <= MAX_TOOL_RESULT_LINES) return null;
+
+    const head = lines.slice(0, TRUNCATION_HEAD_LINES).join("\n");
+    const tail = lines.slice(-TRUNCATION_TAIL_LINES).join("\n");
+    const skipped = lines.length - TRUNCATION_HEAD_LINES - TRUNCATION_TAIL_LINES;
+
+    return `${head}\n\n[... ${skipped} lines truncated by CodePrune ...]\n\n${tail}`;
+  }
+
+  private pruneGitStatus(system: any[]): boolean {
+    let modified = false;
+
+    for (const block of system) {
+      if (typeof block.text !== "string") continue;
+      if (!block.text.includes("gitStatus:")) continue;
+
+      const lines = block.text.split("\n");
+      const statusStart = lines.findIndex((l: string) => l.includes("Status:"));
+      if (statusStart === -1) continue;
+
+      let untrackedCount = 0;
+      const maxUntracked = 5;
+      const filteredLines: string[] = [];
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (i > statusStart && line.startsWith("??")) {
+          untrackedCount++;
+          if (untrackedCount <= maxUntracked) {
+            filteredLines.push(line);
+          } else if (untrackedCount === maxUntracked + 1) {
+            filteredLines.push("[... more untracked files hidden by CodePrune]");
+            modified = true;
+          }
+          // Skip remaining untracked
+        } else {
+          filteredLines.push(line);
+        }
+      }
+
+      if (modified) {
+        block.text = filteredLines.join("\n");
+      }
+    }
+
+    return modified;
+  }
+
+  private injectConciseness(system: any[]): boolean {
+    if (system.length === 0) return false;
+
+    const instruction =
+      "\n<codeprune-optimization>\nToken optimization active. Be maximally concise: no preamble, no trailing summaries, no restating what was asked. Code-only responses when possible. Skip explanations unless explicitly asked.\n</codeprune-optimization>\n";
+
+    const lastBlock = system[system.length - 1];
+    if (typeof lastBlock.text === "string") {
+      lastBlock.text += instruction;
+      return true;
+    }
+
+    return false;
+  }
+
+  estimateTokens(text: string): number {
+    return Math.ceil(text.length / 4);
+  }
+}
