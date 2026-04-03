@@ -1,0 +1,17 @@
+{
+  "name": "codeprune",
+  "version": "0.1.0",
+  "description": "Token-optimizing proxy for Claude Code — reduce costs by 30-50%",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --watch src/proxy.ts",
+    "start": "bun run src/proxy.ts",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "hono": "^4.7.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  }
+}
