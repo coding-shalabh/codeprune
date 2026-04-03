@@ -10,6 +10,7 @@ export interface RequestMetric {
   cacheWriteTokens: number;
   authType: "api_key" | "oauth";
   optimizations: string[];
+  mode: "optimized" | "passthrough";
 }
 
 export interface SessionStats {
@@ -52,15 +53,16 @@ export class MetricsStore {
         cache_read_tokens INTEGER DEFAULT 0,
         cache_write_tokens INTEGER DEFAULT 0,
         auth_type TEXT NOT NULL,
-        optimizations TEXT NOT NULL
+        optimizations TEXT NOT NULL,
+        mode TEXT DEFAULT 'optimized'
       )
     `);
   }
 
   record(metric: RequestMetric): void {
     this.db.run(
-      `INSERT INTO requests (timestamp, model, input_tokens_original, input_tokens_optimized, output_tokens, cache_read_tokens, cache_write_tokens, auth_type, optimizations)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO requests (timestamp, model, input_tokens_original, input_tokens_optimized, output_tokens, cache_read_tokens, cache_write_tokens, auth_type, optimizations, mode)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         metric.timestamp,
         metric.model,
@@ -71,8 +73,46 @@ export class MetricsStore {
         metric.cacheWriteTokens,
         metric.authType,
         JSON.stringify(metric.optimizations),
+        metric.mode || "optimized",
       ]
     );
+  }
+
+  getComparisonStats(): { optimized: SessionStats; passthrough: SessionStats } {
+    const getStats = (mode: string): SessionStats => {
+      const row = this.db
+        .query(
+          `SELECT
+            COUNT(*) as totalRequests,
+            COALESCE(SUM(input_tokens_original), 0) as totalInputOriginal,
+            COALESCE(SUM(input_tokens_optimized), 0) as totalInputOptimized,
+            COALESCE(SUM(output_tokens), 0) as totalOutputTokens
+          FROM requests WHERE mode = ?`
+        )
+        .get(mode) as any;
+
+      const totalSaved = row.totalInputOriginal - row.totalInputOptimized;
+      const savingsPercent =
+        row.totalInputOriginal > 0
+          ? (totalSaved / row.totalInputOriginal) * 100
+          : 0;
+      const costSaved = (totalSaved / 1_000_000) * 3;
+
+      return {
+        totalRequests: row.totalRequests,
+        totalInputOriginal: row.totalInputOriginal,
+        totalInputOptimized: row.totalInputOptimized,
+        totalOutputTokens: row.totalOutputTokens,
+        totalSaved,
+        savingsPercent,
+        costSaved,
+      };
+    };
+
+    return {
+      optimized: getStats("optimized"),
+      passthrough: getStats("passthrough"),
+    };
   }
 
   getSessionStats(): SessionStats {

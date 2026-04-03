@@ -10,6 +10,7 @@ const metrics = new MetricsStore("codeprune.db");
 
 const UPSTREAM = process.env.CODEPRUNE_UPSTREAM || "https://api.anthropic.com";
 const PORT = parseInt(process.env.CODEPRUNE_PORT || "4100");
+let MODE: "optimized" | "passthrough" = (process.env.CODEPRUNE_MODE === "passthrough") ? "passthrough" : "optimized";
 
 app.use("*", cors());
 
@@ -21,9 +22,20 @@ app.get("/dashboard", (c) => c.html(getDashboardHTML()));
 
 // Stats API
 app.get("/api/stats", (c) => c.json(metrics.getSessionStats()));
+app.get("/api/comparison", (c) => c.json(metrics.getComparisonStats()));
 app.get("/api/requests", (c) => {
   const limit = parseInt(c.req.query("limit") || "50");
   return c.json(metrics.getRequestLog(limit));
+});
+app.get("/api/mode", (c) => c.json({ mode: MODE }));
+app.post("/api/mode", async (c) => {
+  const body = await c.req.json();
+  if (body.mode === "optimized" || body.mode === "passthrough") {
+    MODE = body.mode;
+    console.log(`[CodePrune] Mode switched to: ${MODE}`);
+    return c.json({ mode: MODE });
+  }
+  return c.json({ error: "Invalid mode" }, 400);
 });
 
 // Main proxy — forward all /v1/* to upstream
@@ -60,24 +72,33 @@ app.all("/v1/*", async (c) => {
     return c.json({ error: "Invalid JSON body" }, 400);
   }
 
-  // Only optimize /v1/messages
+  // Only process /v1/messages
   let optimizeResult: any = null;
   if (path === "/v1/messages") {
     const messages = body.messages || [];
     const system = body.system || [];
 
+    // Always measure original size
     const result = optimizer.optimize(messages, system);
-    body.messages = result.messages;
-    if (result.system.length > 0) {
-      body.system = result.system;
+
+    if (MODE === "optimized") {
+      // Apply optimizations
+      body.messages = result.messages;
+      if (result.system.length > 0) {
+        body.system = result.system;
+      }
+      if (result.optimizations.length > 0) {
+        console.log(
+          `[CodePrune] Optimized: ${result.inputTokensOriginal} -> ${result.inputTokensOptimized} tokens (${result.optimizations.join(", ")})`
+        );
+      }
+    } else {
+      // Passthrough — log original size but don't modify
+      result.inputTokensOptimized = result.inputTokensOriginal;
+      result.optimizations = [];
+      console.log(`[CodePrune] Passthrough: ${result.inputTokensOriginal} tokens (no optimization)`);
     }
     optimizeResult = result;
-
-    if (result.optimizations.length > 0) {
-      console.log(
-        `[CodePrune] Optimized: ${result.inputTokensOriginal} -> ${result.inputTokensOptimized} tokens (${result.optimizations.join(", ")})`
-      );
-    }
   }
 
   headers["content-type"] = "application/json";
@@ -99,7 +120,7 @@ app.all("/v1/*", async (c) => {
     const [userStream, metricsStream] = respBody.tee();
 
     // Extract usage in background
-    extractStreamUsage(metricsStream, optimizeResult, authType, body.model);
+    extractStreamUsage(metricsStream, optimizeResult, authType, body.model, MODE);
 
     // Forward stream to client
     const respHeaders: Record<string, string> = {};
@@ -129,6 +150,7 @@ app.all("/v1/*", async (c) => {
       cacheWriteTokens: responseBody.usage.cache_creation_input_tokens || 0,
       authType,
       optimizations: optimizeResult.optimizations,
+      mode: MODE,
     });
   }
 
@@ -140,7 +162,8 @@ async function extractStreamUsage(
   stream: ReadableStream,
   optimizeResult: any,
   authType: "api_key" | "oauth",
-  model: string
+  model: string,
+  currentMode: "optimized" | "passthrough" = "optimized"
 ) {
   if (!optimizeResult) return;
 
@@ -175,6 +198,7 @@ async function extractStreamUsage(
         cacheWriteTokens: lastUsage.cache_creation_input_tokens || 0,
         authType,
         optimizations: optimizeResult.optimizations,
+        mode: currentMode,
       });
     }
   } catch (err) {
