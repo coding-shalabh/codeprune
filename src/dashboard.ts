@@ -203,7 +203,18 @@ export function getDashboardHTML(): string {
 
     /* ─── Log ─── */
     .b-log { grid-area: log; overflow-x: auto; }
-    .log-h { font-size: 14px; font-weight: 800; margin-bottom: 14px; letter-spacing: 0.3px; }
+    .log-tabs { display: flex; gap: 0; margin-bottom: 16px; }
+    .log-tab {
+      padding: 8px 20px; border: none; cursor: pointer;
+      font-family: var(--font); font-size: 12px; font-weight: 700;
+      background: var(--surface-alt); color: var(--text-dim);
+      transition: all 0.2s; letter-spacing: 0.3px;
+    }
+    .log-tab:first-child { border-radius: 8px 0 0 8px; }
+    .log-tab:last-child { border-radius: 0 8px 8px 0; }
+    .log-tab.on { background: var(--yellow); color: #000; }
+    .log-tab.on.raw { background: var(--text); color: #fff; }
+    .log-count { font-family: var(--mono); font-size: 10px; margin-left: 6px; opacity: 0.7; }
     table { width: 100%; border-collapse: collapse; }
     th {
       text-align: left; padding: 8px 10px;
@@ -337,10 +348,17 @@ export function getDashboardHTML(): string {
     </div>
 
     <div class="bx b-log">
-      <div class="log-h">Request Log</div>
-      <table>
-        <thead><tr><th>Time</th><th>Mode</th><th>Model</th><th>Original</th><th>Optimized</th><th>Saved</th><th>Layers</th></tr></thead>
-        <tbody id="log"><tr><td colspan="7" class="empty-r">Waiting for requests&hellip;</td></tr></tbody>
+      <div class="log-tabs">
+        <button class="log-tab on" id="tab-opt" onclick="switchTab('optimized')">Optimized<span class="log-count" id="tab-opt-count">0</span></button>
+        <button class="log-tab raw" id="tab-raw" onclick="switchTab('passthrough')">Raw (No Optimization)<span class="log-count" id="tab-raw-count">0</span></button>
+      </div>
+      <table id="tbl-opt">
+        <thead><tr><th>Time</th><th>Model</th><th>Original</th><th>Optimized</th><th>Saved</th><th>Layers</th></tr></thead>
+        <tbody id="log-opt"><tr><td colspan="6" class="empty-r">No optimized requests yet</td></tr></tbody>
+      </table>
+      <table id="tbl-raw" style="display:none">
+        <thead><tr><th>Time</th><th>Model</th><th>Input Tokens</th><th>Output Tokens</th><th>Cache Read</th><th>Cache Write</th></tr></thead>
+        <tbody id="log-raw"><tr><td colspan="6" class="empty-r">No passthrough requests yet. Switch to Passthrough mode and run a prompt.</td></tr></tbody>
       </table>
     </div>
 
@@ -386,37 +404,58 @@ export function getDashboardHTML(): string {
         document.getElementById('c-p-out').textContent=fmt(p.totalOutputTokens);
         document.getElementById('c-p-avg').textContent=p.totalRequests>0?fmt(Math.round(p.totalInputOriginal/p.totalRequests)):'0';
 
-        var tb=document.getElementById('log');
-        if(l.length===0)return;
-        var h='';
-        for(var r of l){
-          var sv=r.input_tokens_original-r.input_tokens_optimized;
-          var pc=r.input_tokens_original>0?((sv/r.input_tokens_original)*100).toFixed(0):'0';
-          var ops=[];try{ops=JSON.parse(r.optimizations||'[]')}catch{}
-          var t=new Date(r.timestamp).toLocaleTimeString();
-          var md=(r.model||'?').replace(/claude-/g,'').split('-').slice(0,2).join('-');
-          var mo=r.mode||'optimized';
-          var pl=mo==='optimized'?'<span class="pill ok">OPT</span>':'<span class="pill rw">RAW</span>';
-          var sc=sv>0?'c-yellow':sv<0?'c-red':'';
+        // Split log by mode
+        var optRows=l.filter(function(r){return(r.mode||'optimized')==='optimized'});
+        var rawRows=l.filter(function(r){return r.mode==='passthrough'});
 
-          h+='<tr>';
-          h+='<td>'+t+'</td>';
-          h+='<td>'+pl+'</td>';
-          h+='<td>'+md+'</td>';
-          h+='<td>'+fmt(r.input_tokens_original)+'</td>';
-          h+='<td>'+fmt(r.input_tokens_optimized)+'</td>';
-          h+='<td class="'+sc+'">'+fmt(sv)+' ('+pc+'%)</td>';
-          h+='<td>';
-          for(var tg of ops){
-            var cl=tg.includes('clearing')?'g':tg.includes('truncat')?'b':'a';
-            h+='<span class="tag '+cl+'">'+tg.replace(/_/g,' ')+'</span>';
+        document.getElementById('tab-opt-count').textContent=String(optRows.length);
+        document.getElementById('tab-raw-count').textContent=String(rawRows.length);
+
+        // Optimized table
+        var tbOpt=document.getElementById('log-opt');
+        if(optRows.length>0){
+          var h='';
+          for(var r of optRows){
+            var sv=r.input_tokens_original-r.input_tokens_optimized;
+            var pc=r.input_tokens_original>0?((sv/r.input_tokens_original)*100).toFixed(0):'0';
+            var ops=[];try{ops=JSON.parse(r.optimizations||'[]')}catch{}
+            var t=new Date(r.timestamp).toLocaleTimeString();
+            var md=(r.model||'?').replace(/claude-/g,'').split('-').slice(0,2).join('-');
+            var sc=sv>0?'c-yellow':sv<0?'c-red':'';
+            h+='<tr><td>'+t+'</td><td>'+md+'</td><td>'+fmt(r.input_tokens_original)+'</td><td>'+fmt(r.input_tokens_optimized)+'</td><td class="'+sc+'">'+fmt(sv)+' ('+pc+'%)</td><td>';
+            for(var tg of ops){
+              var cl=tg.includes('clearing')?'g':tg.includes('truncat')?'b':'a';
+              h+='<span class="tag '+cl+'">'+tg.replace(/_/g,' ')+'</span>';
+            }
+            if(ops.length===0)h+='<span style="color:var(--text-muted)">none</span>';
+            h+='</td></tr>';
           }
-          if(ops.length===0)h+='<span style="color:var(--text-muted)">none</span>';
-          h+='</td></tr>';
+          tbOpt.textContent='';
+          tbOpt.insertAdjacentHTML('beforeend',h);
         }
-        tb.textContent='';
-        tb.insertAdjacentHTML('beforeend',h);
+
+        // Raw table
+        var tbRaw=document.getElementById('log-raw');
+        if(rawRows.length>0){
+          var h2='';
+          for(var r of rawRows){
+            var t=new Date(r.timestamp).toLocaleTimeString();
+            var md=(r.model||'?').replace(/claude-/g,'').split('-').slice(0,2).join('-');
+            h2+='<tr><td>'+t+'</td><td>'+md+'</td><td>'+fmt(r.input_tokens_original)+'</td><td>'+fmt(r.output_tokens)+'</td><td>'+fmt(r.cache_read_tokens)+'</td><td>'+fmt(r.cache_write_tokens)+'</td></tr>';
+          }
+          tbRaw.textContent='';
+          tbRaw.insertAdjacentHTML('beforeend',h2);
+        }
       }catch(e){console.error(e)}
+    }
+
+    var activeTab='optimized';
+    function switchTab(tab){
+      activeTab=tab;
+      document.getElementById('tab-opt').className='log-tab'+(tab==='optimized'?' on':'');
+      document.getElementById('tab-raw').className='log-tab raw'+(tab==='passthrough'?' on':'');
+      document.getElementById('tbl-opt').style.display=tab==='optimized'?'':'none';
+      document.getElementById('tbl-raw').style.display=tab==='passthrough'?'':'none';
     }
 
     refresh();
