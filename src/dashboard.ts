@@ -7,53 +7,70 @@ export function getDashboardHTML(): string {
   <title>CodePrune</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #F9FAFB;
-      --surface: #FFFFFF;
-      --border: #E5E7EB;
-      --border-hover: #D1D5DB;
-      --text-primary: #111827;
-      --text-secondary: #6B7280;
-      --text-muted: #9CA3AF;
-      --emerald: #10B981;
-      --emerald-light: #D1FAE5;
-      --emerald-bg: #ECFDF5;
-      --rose: #F43F5E;
-      --rose-light: #FFE4E6;
-      --rose-bg: #FFF1F2;
-      --purple: #8B5CF6;
-      --purple-light: #EDE9FE;
-      --blue: #3B82F6;
-      --blue-light: #DBEAFE;
-      --amber: #F59E0B;
-      --amber-light: #FEF3C7;
-      --radius: 14px;
-      --shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06);
-      --shadow-hover: 0 4px 12px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.04);
-      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-      --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', monospace;
+      --bg: #0C0C0C;
+      --surface: #161616;
+      --surface-alt: #1C1C1C;
+      --text: #FAFAFA;
+      --text-dim: #A0A0A0;
+      --text-muted: #555;
+      --accent: #FAFAFA;
+      --green: #00FF88;
+      --red: #FF4D6A;
+      --font: 'Inter', -apple-system, system-ui, sans-serif;
+      --mono: 'JetBrains Mono', 'Fira Code', monospace;
+      --radius: 16px;
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
-      font-family: var(--font-sans);
+      font-family: var(--font);
       background: var(--bg);
-      color: var(--text-primary);
+      color: var(--text);
       min-height: 100vh;
-      padding: 24px;
+      padding: 20px;
       -webkit-font-smoothing: antialiased;
+      position: relative;
+    }
+
+    /* ─── Grid Background ─── */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+      background-size: 60px 60px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ─── Gradient Patches ─── */
+    body::after {
+      content: '';
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background:
+        radial-gradient(ellipse 600px 400px at 15% 10%, rgba(0,255,136,0.05) 0%, transparent 70%),
+        radial-gradient(ellipse 500px 500px at 85% 30%, rgba(255,77,106,0.04) 0%, transparent 70%),
+        radial-gradient(ellipse 400px 300px at 50% 80%, rgba(255,255,255,0.03) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
     }
 
     /* ─── Bento Grid ─── */
     .bento {
       display: grid;
       grid-template-columns: repeat(12, 1fr);
-      gap: 16px;
+      gap: 12px;
       max-width: 1360px;
       margin: 0 auto;
+      position: relative;
+      z-index: 1;
       grid-template-areas:
         "hdr   hdr   hdr   hdr   hdr   hdr   hdr   hdr   hdr   ctrl  ctrl  ctrl"
         "hero  hero  hero  hero  hero  hero  hero  hero  hero  hero  hero  hero"
@@ -63,192 +80,150 @@ export function getDashboardHTML(): string {
         "log   log   log   log   log   log   log   log   log   log   log   log";
     }
 
-    /* ─── Block Base ─── */
+    /* ─── Block ─── */
     .bx {
       background: var(--surface);
-      border: 1px solid var(--border);
+      border: none;
       border-radius: var(--radius);
-      padding: 20px;
-      box-shadow: var(--shadow);
-      transition: box-shadow 0.25s, border-color 0.25s, transform 0.2s;
+      padding: 22px;
+      transition: transform 0.2s, background 0.2s;
     }
     .bx:hover {
-      box-shadow: var(--shadow-hover);
-      border-color: var(--border-hover);
       transform: translateY(-2px);
+      background: var(--surface-alt);
     }
 
     /* ─── Header ─── */
-    .b-hdr { grid-area: hdr; background: none; border: none; box-shadow: none; padding: 0 2px; display: flex; align-items: center; gap: 14px; }
-    .b-hdr:hover { transform: none; box-shadow: none; border-color: transparent; }
-    .logo {
-      font-size: 24px;
-      font-weight: 900;
-      letter-spacing: -0.6px;
-      color: var(--text-primary);
+    .b-hdr {
+      grid-area: hdr; background: none; padding: 0 4px;
+      display: flex; align-items: center; gap: 14px;
     }
-    .logo span { color: var(--emerald); }
-    .live-chip {
+    .b-hdr:hover { transform: none; background: none; }
+    .logo { font-size: 24px; font-weight: 900; color: var(--text); letter-spacing: -0.5px; }
+    .logo span { color: var(--green); }
+    .chip {
       display: inline-flex; align-items: center; gap: 6px;
-      background: var(--emerald-light);
-      color: var(--emerald);
-      font-size: 11px; font-weight: 700;
+      background: #1A2E1F; color: var(--green);
+      font-size: 10px; font-weight: 800;
       padding: 4px 12px; border-radius: 20px;
-      letter-spacing: 0.6px;
+      letter-spacing: 1px;
     }
-    .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--emerald); animation: blink 2s infinite; }
-    @keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: blink 2s infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.25} }
 
     /* ─── Controls ─── */
-    .b-ctrl { grid-area: ctrl; background: none; border: none; box-shadow: none; padding: 0; display: flex; align-items: center; justify-content: flex-end; }
-    .b-ctrl:hover { transform: none; box-shadow: none; border-color: transparent; }
-    .toggle-group {
-      display: inline-flex; gap: 2px;
-      background: #F3F4F6; border: 1px solid var(--border);
-      border-radius: 10px; padding: 3px;
+    .b-ctrl {
+      grid-area: ctrl; background: none; padding: 0;
+      display: flex; align-items: center; justify-content: flex-end;
     }
-    .tgl {
-      padding: 7px 16px; border-radius: 8px; border: none;
-      cursor: pointer; font-family: var(--font-sans);
-      font-size: 12px; font-weight: 600;
-      background: transparent; color: var(--text-secondary);
-      transition: all 0.2s;
+    .b-ctrl:hover { transform: none; background: none; }
+    .tog { display: inline-flex; gap: 2px; background: var(--surface); border-radius: 10px; padding: 3px; }
+    .tb {
+      padding: 7px 16px; border-radius: 8px; border: none; cursor: pointer;
+      font-family: var(--font); font-size: 11px; font-weight: 700;
+      background: transparent; color: var(--text-muted); transition: all 0.2s;
+      letter-spacing: 0.3px;
     }
-    .tgl:hover { color: var(--text-primary); background: #E5E7EB; }
-    .tgl.on { background: var(--emerald); color: #fff; box-shadow: 0 1px 4px rgba(16,185,129,0.25); }
-    .tgl.pass.on { background: var(--rose); color: #fff; box-shadow: 0 1px 4px rgba(244,63,94,0.25); }
+    .tb:hover { color: var(--text-dim); }
+    .tb.on { background: var(--text); color: var(--bg); }
+    .tb.p.on { background: var(--red); color: #fff; }
 
     /* ─── Hero ─── */
     .b-hero {
       grid-area: hero;
+      background: var(--surface);
       text-align: center;
-      padding: 44px 20px;
-      background: var(--emerald-bg);
-      border-color: #A7F3D0;
+      padding: 48px 20px;
     }
-    .b-hero:hover { border-color: var(--emerald); }
-    .hero-num {
-      font-family: var(--font-mono);
-      font-size: 84px; font-weight: 800;
-      color: var(--emerald);
-      line-height: 1;
-      letter-spacing: -2px;
+    .hero-n {
+      font-family: var(--mono); font-size: 96px; font-weight: 800;
+      color: var(--green); line-height: 1; letter-spacing: -4px;
     }
-    .hero-tag {
-      font-size: 12px; font-weight: 700;
-      color: #059669;
-      margin-top: 8px;
-      letter-spacing: 3px;
-      text-transform: uppercase;
+    .hero-t {
+      font-size: 11px; font-weight: 700; color: var(--text-dim);
+      margin-top: 10px; letter-spacing: 4px; text-transform: uppercase;
     }
 
-    /* ─── Metric Cards ─── */
-    .b-sav  { grid-area: sav; }
-    .b-cost { grid-area: cost; }
-    .b-reqs { grid-area: reqs; }
-    .b-mde  { grid-area: mde; }
+    /* ─── Stat Cards ─── */
+    .b-sav  { grid-area: sav;  background: #101A13; }
+    .b-cost { grid-area: cost; background: #161216; }
+    .b-reqs { grid-area: reqs; background: #161410; }
+    .b-mde  { grid-area: mde;  background: var(--surface); }
+
+    .b-sav:hover  { background: #142118; }
+    .b-cost:hover { background: #1C161C; }
+    .b-reqs:hover { background: #1C1A14; }
 
     .lbl {
-      font-size: 10px; font-weight: 700;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 2px;
-      margin-bottom: 10px;
+      font-size: 10px; font-weight: 700; color: var(--text-dim);
+      text-transform: uppercase; letter-spacing: 2px; margin-bottom: 12px;
     }
     .val {
-      font-family: var(--font-mono);
-      font-size: 32px; font-weight: 700;
-      line-height: 1.1;
-      letter-spacing: -0.5px;
+      font-family: var(--mono); font-size: 34px; font-weight: 800;
+      line-height: 1; letter-spacing: -1px;
     }
-    .sub { font-size: 11px; color: var(--text-secondary); margin-top: 6px; }
-    .c-emerald { color: var(--emerald); }
-    .c-purple { color: var(--purple); }
-    .c-amber  { color: var(--amber); }
-    .c-blue   { color: var(--blue); }
-    .c-rose   { color: var(--rose); }
-
-    /* ─── Indicator Dots ─── */
-    .indicator { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
-    .indicator.emerald { background: var(--emerald); }
-    .indicator.purple  { background: var(--purple); }
-    .indicator.amber   { background: var(--amber); }
-    .indicator.blue    { background: var(--blue); }
+    .sub { font-size: 11px; color: var(--text-muted); margin-top: 8px; font-family: var(--mono); }
+    .c-green { color: var(--green); }
+    .c-white { color: var(--text); }
+    .c-red   { color: var(--red); }
+    .c-amber { color: #FFB800; }
 
     /* ─── Bars ─── */
     .b-bars { grid-area: bars; }
     .bar-row { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
     .bar-row:last-child { margin-bottom: 0; }
-    .bar-tag {
-      min-width: 80px; text-align: right;
-      font-size: 11px; font-weight: 700;
-      letter-spacing: 0.5px; text-transform: uppercase;
-    }
-    .bar-track { flex: 1; height: 36px; background: #F3F4F6; border-radius: 10px; overflow: hidden; position: relative; }
-    .bar-fill { height: 100%; border-radius: 10px; transition: width 0.8s cubic-bezier(0.16,1,0.3,1); position: relative; min-width: 2px; }
-    .bar-fill.without { background: linear-gradient(90deg, #FDA4AF 0%, #F43F5E 100%); }
-    .bar-fill.with    { background: linear-gradient(90deg, #6EE7B7 0%, #10B981 100%); }
+    .bar-tag { min-width: 80px; text-align: right; font-size: 11px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; }
+    .bar-track { flex: 1; height: 40px; background: #111; border-radius: 10px; overflow: hidden; position: relative; }
+    .bar-fill { height: 100%; border-radius: 10px; transition: width 0.8s cubic-bezier(0.16,1,0.3,1); position: relative; }
+    .bar-fill.w { background: var(--red); }
+    .bar-fill.o { background: var(--green); }
     .bar-num {
-      position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
-      font-family: var(--font-mono); font-size: 12px; font-weight: 700;
-      color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+      position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+      font-family: var(--mono); font-size: 13px; font-weight: 800;
+      color: #000; text-shadow: none;
     }
-    .bar-ext {
-      min-width: 75px;
-      font-family: var(--font-mono);
-      font-size: 12px; font-weight: 700;
-    }
+    .bar-ext { min-width: 80px; font-family: var(--mono); font-size: 13px; font-weight: 700; }
 
     /* ─── Comparison ─── */
-    .b-cmpA { grid-area: cmpA; border-left: 3px solid var(--emerald); }
-    .b-cmpA:hover { border-color: var(--emerald); }
-    .b-cmpB { grid-area: cmpB; border-left: 3px solid var(--rose); }
-    .b-cmpB:hover { border-color: var(--rose); }
-    .cmp-head {
-      font-size: 13px; font-weight: 700; margin-bottom: 16px;
-      display: flex; align-items: center; gap: 8px;
-    }
-    .cmp-dot { width: 10px; height: 10px; border-radius: 50%; }
-    .cmp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    .cmp-lbl { font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 4px; }
-    .cmp-val { font-family: var(--font-mono); font-size: 22px; font-weight: 700; }
+    .b-cmpA { grid-area: cmpA; background: #101A13; border-left: 4px solid var(--green); border-radius: var(--radius); }
+    .b-cmpB { grid-area: cmpB; background: #1A1014; border-left: 4px solid var(--red); border-radius: var(--radius); }
+    .b-cmpA:hover { background: #142118; }
+    .b-cmpB:hover { background: #22141A; }
+    .cmp-h { font-size: 13px; font-weight: 800; margin-bottom: 18px; display: flex; align-items: center; gap: 8px; letter-spacing: 0.3px; }
+    .cmp-d { width: 10px; height: 10px; border-radius: 50%; }
+    .cmp-g { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .cmp-l { font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 4px; }
+    .cmp-v { font-family: var(--mono); font-size: 24px; font-weight: 800; letter-spacing: -0.5px; }
 
     /* ─── Log ─── */
     .b-log { grid-area: log; overflow-x: auto; }
-    .log-head { font-size: 14px; font-weight: 700; margin-bottom: 14px; }
+    .log-h { font-size: 14px; font-weight: 800; margin-bottom: 14px; letter-spacing: 0.3px; }
     table { width: 100%; border-collapse: collapse; }
     th {
       text-align: left; padding: 8px 10px;
-      font-size: 10px; font-weight: 700;
-      color: var(--text-muted);
+      font-size: 10px; font-weight: 800; color: var(--text-muted);
       text-transform: uppercase; letter-spacing: 1.5px;
-      border-bottom: 2px solid #F3F4F6;
+      border-bottom: 2px solid #222;
     }
     td {
-      padding: 9px 10px;
-      border-bottom: 1px solid #F3F4F6;
-      font-family: var(--font-mono);
-      font-size: 12px;
-      color: var(--text-primary);
+      padding: 9px 10px; border-bottom: 1px solid #1A1A1A;
+      font-family: var(--mono); font-size: 12px; color: var(--text-dim);
     }
-    tr:hover td { background: #F9FAFB; }
+    tr:hover td { background: #1A1A1A; color: var(--text); }
     .pill {
-      display: inline-block; padding: 3px 8px;
-      border-radius: 6px; font-size: 9px; font-weight: 700;
-      letter-spacing: 0.5px; font-family: var(--font-sans);
+      display: inline-block; padding: 3px 8px; border-radius: 6px;
+      font-size: 9px; font-weight: 800; letter-spacing: 0.5px; font-family: var(--font);
     }
-    .pill.opt  { background: var(--emerald-light); color: #059669; }
-    .pill.pass { background: var(--rose-light); color: #E11D48; }
+    .pill.ok { background: #1A2E1F; color: var(--green); }
+    .pill.rw { background: #2E1A1F; color: var(--red); }
     .tag {
-      display: inline-block; padding: 3px 8px;
-      border-radius: 6px; font-size: 9px; font-weight: 600;
-      margin: 1px; font-family: var(--font-sans);
+      display: inline-block; padding: 3px 8px; border-radius: 6px;
+      font-size: 9px; font-weight: 700; margin: 1px; font-family: var(--font);
     }
-    .tag.t-green  { background: var(--emerald-light); color: #059669; }
-    .tag.t-blue   { background: var(--blue-light); color: #2563EB; }
-    .tag.t-amber  { background: var(--amber-light); color: #B45309; }
-    .tag.t-purple { background: var(--purple-light); color: #7C3AED; }
-    .empty-row { text-align: center; padding: 48px 20px; color: var(--text-muted); font-family: var(--font-sans); font-size: 13px; }
+    .tag.g { background: #1A2E1F; color: var(--green); }
+    .tag.b { background: #1A1A2E; color: #6E8EFF; }
+    .tag.a { background: #2E2A1A; color: #FFB800; }
+    .empty-r { text-align: center; padding: 48px; color: var(--text-muted); font-family: var(--font); font-size: 13px; }
 
     /* ─── Responsive ─── */
     @media (max-width: 1024px) {
@@ -265,129 +240,106 @@ export function getDashboardHTML(): string {
       }
     }
     @media (max-width: 640px) {
-      body { padding: 12px; }
+      body { padding: 10px; }
       .bento {
         grid-template-columns: 1fr;
-        grid-template-areas:
-          "hdr" "ctrl" "hero"
-          "sav" "cost" "reqs" "mde"
-          "bars" "cmpA" "cmpB" "log";
-        gap: 12px;
+        grid-template-areas: "hdr" "ctrl" "hero" "sav" "cost" "reqs" "mde" "bars" "cmpA" "cmpB" "log";
+        gap: 10px;
       }
       .b-ctrl { justify-content: flex-start; }
-      .hero-num { font-size: 52px; }
+      .hero-n { font-size: 56px; letter-spacing: -2px; }
       .val { font-size: 26px; }
-      .cmp-val { font-size: 18px; }
+      .cmp-v { font-size: 18px; }
     }
   </style>
 </head>
 <body>
   <div class="bento">
 
-    <!-- Header -->
     <div class="bx b-hdr">
       <span class="logo">Code<span>Prune</span></span>
-      <span class="live-chip"><span class="live-dot"></span>LIVE</span>
+      <span class="chip"><span class="dot"></span>LIVE</span>
     </div>
 
-    <!-- Controls -->
     <div class="bx b-ctrl">
-      <div class="toggle-group">
-        <button class="tgl on" id="btn-opt" onclick="setMode('optimized')">Optimized</button>
-        <button class="tgl pass" id="btn-pass" onclick="setMode('passthrough')">Passthrough</button>
+      <div class="tog">
+        <button class="tb on" id="btn-opt" onclick="setMode('optimized')">Optimized</button>
+        <button class="tb p" id="btn-pass" onclick="setMode('passthrough')">Passthrough</button>
       </div>
     </div>
 
-    <!-- Hero -->
     <div class="bx b-hero">
-      <div class="hero-num" id="big-pct">0%</div>
-      <div class="hero-tag">Total Token Savings</div>
+      <div class="hero-n" id="big-pct">0%</div>
+      <div class="hero-t">Total Token Savings</div>
     </div>
 
-    <!-- Metric Cards -->
     <div class="bx b-sav">
-      <div class="lbl"><span class="indicator emerald"></span>Tokens Saved</div>
-      <div class="val c-emerald" id="saved">0</div>
+      <div class="lbl">Tokens Saved</div>
+      <div class="val c-green" id="saved">0</div>
       <div class="sub" id="saved-sub">&mdash;</div>
     </div>
     <div class="bx b-cost">
-      <div class="lbl"><span class="indicator purple"></span>Cost Saved</div>
-      <div class="val c-purple" id="cost">$0.00</div>
-      <div class="sub">Sonnet $3 &middot; Opus $5 / Mtok</div>
+      <div class="lbl">Cost Saved</div>
+      <div class="val c-white" id="cost">$0.00</div>
+      <div class="sub">sonnet $3 / opus $5 per Mtok</div>
     </div>
     <div class="bx b-reqs">
-      <div class="lbl"><span class="indicator amber"></span>API Calls</div>
+      <div class="lbl">API Calls</div>
       <div class="val c-amber" id="requests">0</div>
       <div class="sub" id="req-sub">&mdash;</div>
     </div>
     <div class="bx b-mde">
-      <div class="lbl"><span class="indicator blue"></span>Current Mode</div>
-      <div class="val c-blue" id="mode-display">&mdash;</div>
-      <div class="sub">Toggle to switch</div>
+      <div class="lbl">Mode</div>
+      <div class="val c-white" id="mode-display">&mdash;</div>
+      <div class="sub">toggle to switch</div>
     </div>
 
-    <!-- Bars -->
     <div class="bx b-bars">
-      <div class="lbl" style="margin-bottom:16px">Input Token Comparison</div>
+      <div class="lbl" style="margin-bottom:18px">Input Token Comparison</div>
       <div class="bar-row">
-        <div class="bar-tag c-rose">Without</div>
-        <div class="bar-track">
-          <div class="bar-fill without" id="bar-orig" style="width:100%">
-            <span class="bar-num" id="bar-orig-val">0</span>
-          </div>
-        </div>
-        <div class="bar-ext c-rose" id="bar-orig-lbl">0</div>
+        <div class="bar-tag c-red">Without</div>
+        <div class="bar-track"><div class="bar-fill w" id="bar-orig" style="width:100%"><span class="bar-num" id="bar-orig-val">0</span></div></div>
+        <div class="bar-ext c-red" id="bar-orig-lbl">0</div>
       </div>
       <div class="bar-row">
-        <div class="bar-tag c-emerald">With</div>
-        <div class="bar-track">
-          <div class="bar-fill with" id="bar-opt" style="width:0%">
-            <span class="bar-num" id="bar-opt-val">0</span>
-          </div>
-        </div>
-        <div class="bar-ext c-emerald" id="bar-opt-lbl">0</div>
+        <div class="bar-tag c-green">With</div>
+        <div class="bar-track"><div class="bar-fill o" id="bar-opt" style="width:0%"><span class="bar-num" id="bar-opt-val">0</span></div></div>
+        <div class="bar-ext c-green" id="bar-opt-lbl">0</div>
       </div>
     </div>
 
-    <!-- Comparison A -->
     <div class="bx b-cmpA">
-      <div class="cmp-head"><div class="cmp-dot" style="background:var(--emerald)"></div>With CodePrune</div>
-      <div class="cmp-grid">
-        <div><div class="cmp-lbl">Requests</div><div class="cmp-val c-emerald" id="c-o-req">0</div></div>
-        <div><div class="cmp-lbl">Input Tokens</div><div class="cmp-val c-emerald" id="c-o-tok">0</div></div>
-        <div><div class="cmp-lbl">Output Tokens</div><div class="cmp-val" id="c-o-out">0</div></div>
-        <div><div class="cmp-lbl">Avg / Request</div><div class="cmp-val c-emerald" id="c-o-avg">0</div></div>
+      <div class="cmp-h"><div class="cmp-d" style="background:var(--green)"></div>With CodePrune</div>
+      <div class="cmp-g">
+        <div><div class="cmp-l">Requests</div><div class="cmp-v c-green" id="c-o-req">0</div></div>
+        <div><div class="cmp-l">Input Tokens</div><div class="cmp-v c-green" id="c-o-tok">0</div></div>
+        <div><div class="cmp-l">Output Tokens</div><div class="cmp-v c-white" id="c-o-out">0</div></div>
+        <div><div class="cmp-l">Avg / Request</div><div class="cmp-v c-green" id="c-o-avg">0</div></div>
       </div>
     </div>
 
-    <!-- Comparison B -->
     <div class="bx b-cmpB">
-      <div class="cmp-head"><div class="cmp-dot" style="background:var(--rose)"></div>Without CodePrune</div>
-      <div class="cmp-grid">
-        <div><div class="cmp-lbl">Requests</div><div class="cmp-val c-rose" id="c-p-req">0</div></div>
-        <div><div class="cmp-lbl">Input Tokens</div><div class="cmp-val c-rose" id="c-p-tok">0</div></div>
-        <div><div class="cmp-lbl">Output Tokens</div><div class="cmp-val" id="c-p-out">0</div></div>
-        <div><div class="cmp-lbl">Avg / Request</div><div class="cmp-val c-rose" id="c-p-avg">0</div></div>
+      <div class="cmp-h"><div class="cmp-d" style="background:var(--red)"></div>Without CodePrune</div>
+      <div class="cmp-g">
+        <div><div class="cmp-l">Requests</div><div class="cmp-v c-red" id="c-p-req">0</div></div>
+        <div><div class="cmp-l">Input Tokens</div><div class="cmp-v c-red" id="c-p-tok">0</div></div>
+        <div><div class="cmp-l">Output Tokens</div><div class="cmp-v c-white" id="c-p-out">0</div></div>
+        <div><div class="cmp-l">Avg / Request</div><div class="cmp-v c-red" id="c-p-avg">0</div></div>
       </div>
     </div>
 
-    <!-- Log -->
     <div class="bx b-log">
-      <div class="log-head">Request Log</div>
+      <div class="log-h">Request Log</div>
       <table>
         <thead><tr><th>Time</th><th>Mode</th><th>Model</th><th>Original</th><th>Optimized</th><th>Saved</th><th>Layers</th></tr></thead>
-        <tbody id="log"><tr><td colspan="7" class="empty-row">Waiting for requests&hellip;</td></tr></tbody>
+        <tbody id="log"><tr><td colspan="7" class="empty-r">Waiting for requests&hellip;</td></tr></tbody>
       </table>
     </div>
 
   </div>
 
   <script>
-    function fmt(n){
-      if(n>=1e6) return (n/1e6).toFixed(2)+'M';
-      if(n>=1e3) return (n/1e3).toFixed(1)+'K';
-      return String(n);
-    }
+    function fmt(n){if(n>=1e6)return(n/1e6).toFixed(2)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return String(n)}
 
     async function setMode(m){
       await fetch('/api/mode',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:m})});
@@ -396,32 +348,26 @@ export function getDashboardHTML(): string {
 
     async function refresh(){
       try{
-        const [sR,cR,lR,mR]=await Promise.all([fetch('/api/stats'),fetch('/api/comparison'),fetch('/api/requests?limit=30'),fetch('/api/mode')]);
-        const s=await sR.json(), c=await cR.json(), l=await lR.json(), m=await mR.json();
+        const[sR,cR,lR,mR]=await Promise.all([fetch('/api/stats'),fetch('/api/comparison'),fetch('/api/requests?limit=30'),fetch('/api/mode')]);
+        const s=await sR.json(),c=await cR.json(),l=await lR.json(),m=await mR.json();
 
-        // Mode
-        document.getElementById('btn-opt').className='tgl'+(m.mode==='optimized'?' on':'');
-        document.getElementById('btn-pass').className='tgl pass'+(m.mode==='passthrough'?' on':'');
+        document.getElementById('btn-opt').className='tb'+(m.mode==='optimized'?' on':'');
+        document.getElementById('btn-pass').className='tb p'+(m.mode==='passthrough'?' on':'');
         document.getElementById('mode-display').textContent=m.mode==='optimized'?'OPTIMIZED':'PASSTHROUGH';
 
-        // Hero
         document.getElementById('big-pct').textContent=s.savingsPercent.toFixed(1)+'%';
-
-        // Cards
         document.getElementById('saved').textContent=fmt(s.totalSaved);
         document.getElementById('saved-sub').textContent=fmt(s.totalInputOriginal)+' \\u2192 '+fmt(s.totalInputOptimized);
         document.getElementById('cost').textContent='$'+s.costSaved.toFixed(2);
         document.getElementById('requests').textContent=String(s.totalRequests);
         document.getElementById('req-sub').textContent=c.optimized.totalRequests+' opt \\u00b7 '+c.passthrough.totalRequests+' raw';
 
-        // Bars
         var mx=Math.max(s.totalInputOriginal,1);
         document.getElementById('bar-orig').style.width='100%';
         document.getElementById('bar-opt').style.width=Math.max((s.totalInputOptimized/mx)*100,3)+'%';
         document.getElementById('bar-orig-lbl').textContent=fmt(s.totalInputOriginal);
         document.getElementById('bar-opt-lbl').textContent=fmt(s.totalInputOptimized);
 
-        // Comparison
         var o=c.optimized,p=c.passthrough;
         document.getElementById('c-o-req').textContent=String(o.totalRequests);
         document.getElementById('c-o-tok').textContent=fmt(o.totalInputOptimized);
@@ -432,37 +378,36 @@ export function getDashboardHTML(): string {
         document.getElementById('c-p-out').textContent=fmt(p.totalOutputTokens);
         document.getElementById('c-p-avg').textContent=p.totalRequests>0?fmt(Math.round(p.totalInputOriginal/p.totalRequests)):'0';
 
-        // Log
         var tb=document.getElementById('log');
-        if(l.length===0) return;
-        var html='';
+        if(l.length===0)return;
+        var h='';
         for(var r of l){
           var sv=r.input_tokens_original-r.input_tokens_optimized;
           var pc=r.input_tokens_original>0?((sv/r.input_tokens_original)*100).toFixed(0):'0';
           var ops=[];try{ops=JSON.parse(r.optimizations||'[]')}catch{}
           var t=new Date(r.timestamp).toLocaleTimeString();
-          var mdl=(r.model||'?').replace(/claude-/g,'').split('-').slice(0,2).join('-');
+          var md=(r.model||'?').replace(/claude-/g,'').split('-').slice(0,2).join('-');
           var mo=r.mode||'optimized';
-          var pl=mo==='optimized'?'<span class="pill opt">OPT</span>':'<span class="pill pass">RAW</span>';
-          var sc=sv>0?'c-emerald':sv<0?'c-rose':'';
+          var pl=mo==='optimized'?'<span class="pill ok">OPT</span>':'<span class="pill rw">RAW</span>';
+          var sc=sv>0?'c-green':sv<0?'c-red':'';
 
-          html+='<tr>';
-          html+='<td>'+t+'</td>';
-          html+='<td>'+pl+'</td>';
-          html+='<td>'+mdl+'</td>';
-          html+='<td>'+fmt(r.input_tokens_original)+'</td>';
-          html+='<td>'+fmt(r.input_tokens_optimized)+'</td>';
-          html+='<td class="'+sc+'">'+fmt(sv)+' ('+pc+'%)</td>';
-          html+='<td>';
+          h+='<tr>';
+          h+='<td>'+t+'</td>';
+          h+='<td>'+pl+'</td>';
+          h+='<td>'+md+'</td>';
+          h+='<td>'+fmt(r.input_tokens_original)+'</td>';
+          h+='<td>'+fmt(r.input_tokens_optimized)+'</td>';
+          h+='<td class="'+sc+'">'+fmt(sv)+' ('+pc+'%)</td>';
+          h+='<td>';
           for(var tg of ops){
-            var cl=tg.includes('clearing')?'t-green':tg.includes('truncat')?'t-blue':tg.includes('concise')?'t-purple':'t-amber';
-            html+='<span class="tag '+cl+'">'+tg.replace(/_/g,' ')+'</span>';
+            var cl=tg.includes('clearing')?'g':tg.includes('truncat')?'b':'a';
+            h+='<span class="tag '+cl+'">'+tg.replace(/_/g,' ')+'</span>';
           }
-          if(ops.length===0) html+='<span style="color:var(--text-muted)">none</span>';
-          html+='</td></tr>';
+          if(ops.length===0)h+='<span style="color:var(--text-muted)">none</span>';
+          h+='</td></tr>';
         }
         tb.textContent='';
-        tb.insertAdjacentHTML('beforeend',html);
+        tb.insertAdjacentHTML('beforeend',h);
       }catch(e){console.error(e)}
     }
 
