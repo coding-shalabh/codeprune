@@ -10,17 +10,17 @@ export function getDashboardHTML(): string {
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #0A0A0A;
-      --surface: #141414;
-      --surface-alt: #1A1A1A;
-      --text: #FAFAFA;
-      --text-dim: #999;
-      --text-muted: #555;
-      --yellow: #FACC15;
-      --yellow-dark: #EAB308;
-      --yellow-dim: #1C1A0E;
-      --red: #EF4444;
-      --red-dim: #1C0E0E;
+      --bg: #FAFAFA;
+      --surface: #FFFFFF;
+      --surface-alt: #F3F4F6;
+      --text: #111;
+      --text-dim: #666;
+      --text-muted: #999;
+      --yellow: #EAB308;
+      --yellow-dark: #CA8A04;
+      --yellow-dim: #FEF9C3;
+      --red: #DC2626;
+      --red-dim: #FEE2E2;
       --font: 'Inter', -apple-system, system-ui, sans-serif;
       --mono: 'JetBrains Mono', 'Fira Code', monospace;
       --radius: 16px;
@@ -42,8 +42,8 @@ export function getDashboardHTML(): string {
       position: fixed;
       inset: 0;
       background-image:
-        linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+        linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,0,0,0.05) 1px, transparent 1px);
       background-size: 48px 48px;
       pointer-events: none;
       z-index: 0;
@@ -52,9 +52,9 @@ export function getDashboardHTML(): string {
       position: fixed;
       inset: 0;
       background:
-        radial-gradient(ellipse 700px 500px at 10% 5%, rgba(250,204,21,0.06) 0%, transparent 70%),
-        radial-gradient(ellipse 600px 600px at 85% 20%, rgba(250,204,21,0.04) 0%, transparent 70%),
-        radial-gradient(ellipse 500px 400px at 50% 85%, rgba(255,255,255,0.02) 0%, transparent 70%);
+        radial-gradient(ellipse 700px 500px at 10% 5%, rgba(234,179,8,0.08) 0%, transparent 70%),
+        radial-gradient(ellipse 600px 600px at 85% 20%, rgba(234,179,8,0.05) 0%, transparent 70%),
+        radial-gradient(ellipse 500px 400px at 50% 85%, rgba(0,0,0,0.02) 0%, transparent 70%);
       pointer-events: none;
       z-index: 0;
     }
@@ -141,7 +141,7 @@ export function getDashboardHTML(): string {
       color: var(--yellow); line-height: 1; letter-spacing: -2px;
     }
     .hero-t {
-      font-size: 10px; font-weight: 700; color: #888;
+      font-size: 10px; font-weight: 700; color: #aaa;
       margin-top: 8px; letter-spacing: 3px; text-transform: uppercase;
     }
 
@@ -155,7 +155,7 @@ export function getDashboardHTML(): string {
     .b-sav .val { color: #000; }
     .b-sav .sub { color: #333; }
 
-    .b-sav:hover  { background: var(--yellow-dark); }
+    .b-sav:hover  { background: #D69E2E; }
     .b-cost:hover { background: var(--surface-alt); }
     .b-reqs:hover { background: var(--surface-alt); }
 
@@ -178,7 +178,7 @@ export function getDashboardHTML(): string {
     .bar-row { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
     .bar-row:last-child { margin-bottom: 0; }
     .bar-tag { min-width: 80px; text-align: right; font-size: 11px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; }
-    .bar-track { flex: 1; height: 40px; background: #1A1A1A; border-radius: 10px; overflow: hidden; position: relative; }
+    .bar-track { flex: 1; height: 40px; background: #EFEFEF; border-radius: 10px; overflow: hidden; position: relative; }
     .bar-fill { height: 100%; border-radius: 10px; transition: width 0.8s cubic-bezier(0.16,1,0.3,1); position: relative; }
     .bar-fill.w { background: var(--text); }
     .bar-fill.o { background: var(--yellow); }
@@ -187,7 +187,7 @@ export function getDashboardHTML(): string {
       font-family: var(--mono); font-size: 13px; font-weight: 800;
       color: #000; text-shadow: none;
     }
-    .bar-fill.w .bar-num { color: #000; }
+    .bar-fill.w .bar-num { color: #fff; }
     .bar-ext { min-width: 80px; font-family: var(--mono); font-size: 13px; font-weight: 700; }
 
     /* ─── Comparison ─── */
@@ -209,26 +209,26 @@ export function getDashboardHTML(): string {
       text-align: left; padding: 8px 10px;
       font-size: 10px; font-weight: 800; color: var(--text-muted);
       text-transform: uppercase; letter-spacing: 1.5px;
-      border-bottom: 2px solid #222;
+      border-bottom: 2px solid #E5E7EB;
     }
     td {
-      padding: 9px 10px; border-bottom: 1px solid #1A1A1A;
+      padding: 9px 10px; border-bottom: 1px solid #F3F4F6;
       font-family: var(--mono); font-size: 12px; color: var(--text-dim);
     }
-    tr:hover td { background: #1A1A1A; color: var(--text); }
+    tr:hover td { background: #F9FAFB; color: var(--text); }
     .pill {
       display: inline-block; padding: 3px 8px; border-radius: 6px;
       font-size: 9px; font-weight: 800; letter-spacing: 0.5px; font-family: var(--font);
     }
     .pill.ok { background: var(--yellow); color: #000; }
-    .pill.rw { background: var(--text); color: #000; }
+    .pill.rw { background: var(--text); color: #fff; }
     .tag {
       display: inline-block; padding: 3px 8px; border-radius: 6px;
       font-size: 9px; font-weight: 700; margin: 1px; font-family: var(--font);
     }
     .tag.g { background: var(--yellow-dim); color: var(--yellow); }
-    .tag.b { background: #1A1A1A; color: var(--text); }
-    .tag.a { background: #1A1A1A; color: var(--text-dim); }
+    .tag.b { background: #F3F4F6; color: var(--text); }
+    .tag.a { background: #F3F4F6; color: var(--text-dim); }
     .empty-r { text-align: center; padding: 48px; color: var(--text-muted); font-family: var(--font); font-size: 13px; }
 
     /* ─── Responsive ─── */
