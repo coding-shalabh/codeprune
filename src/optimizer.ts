@@ -11,12 +11,26 @@ export interface OptimizeResult {
   inputTokensOptimized: number;
 }
 
+function safeClone<T>(obj: T): T {
+  try {
+    return structuredClone(obj);
+  } catch {
+    // Fallback for environments without structuredClone or unsupported types
+    return JSON.parse(JSON.stringify(obj));
+  }
+}
+
 export class TokenOptimizer {
   optimize(messages: any[], system: any[]): OptimizeResult {
+    // FIX O-9: Guard against null/undefined inputs
+    if (!Array.isArray(messages)) messages = [];
+    if (!Array.isArray(system)) system = [];
+
     const optimizations: string[] = [];
 
-    let optimizedMessages = JSON.parse(JSON.stringify(messages));
-    let optimizedSystem = JSON.parse(JSON.stringify(system));
+    // FIX O-1: Use structuredClone instead of JSON.parse(JSON.stringify())
+    let optimizedMessages = safeClone(messages);
+    let optimizedSystem = safeClone(system);
 
     const originalTokens =
       this.estimateTokens(JSON.stringify(messages)) +
@@ -57,7 +71,6 @@ export class TokenOptimizer {
   }
 
   private clearOldToolResults(messages: any[]): boolean {
-    // Find all tool_result blocks and keep only the last KEEP_RECENT ones with full content
     const KEEP_RECENT = 6;
     let modified = false;
 
@@ -73,7 +86,6 @@ export class TokenOptimizer {
       }
     }
 
-    // Clear all but the last KEEP_RECENT tool results
     const clearCount = toolResultIndices.length - KEEP_RECENT;
     if (clearCount <= 0) return false;
 
@@ -81,11 +93,18 @@ export class TokenOptimizer {
       const { msgIdx, blockIdx } = toolResultIndices[i];
       const block = messages[msgIdx].content[blockIdx];
 
-      // Skip if already cleared
+      // FIX O-10: Guard against undefined/null content
+      if (block.content == null) continue;
+
       const content = typeof block.content === "string" ? block.content : JSON.stringify(block.content);
       if (content.includes("[Cleared by CodePrune]") || content.length < 200) continue;
 
-      block.content = "[Cleared by CodePrune — old tool result removed to save tokens]";
+      // FIX O-4: Preserve content type (array vs string) when clearing
+      if (Array.isArray(block.content)) {
+        block.content = [{ type: "text", text: "[Cleared by CodePrune — old tool result removed to save tokens]" }];
+      } else {
+        block.content = "[Cleared by CodePrune — old tool result removed to save tokens]";
+      }
       modified = true;
     }
 
@@ -129,19 +148,27 @@ export class TokenOptimizer {
     return modified;
   }
 
+  // FIX O-5: Handle both large single-line content AND many-line content
   private truncateText(text: string): string | null {
     if (text.length <= MAX_TOOL_RESULT_CHARS) return null;
 
     const lines = text.split("\n");
-    if (lines.length <= MAX_TOOL_RESULT_LINES) return null;
 
+    // Large single-line or few-line content (minified JSON, base64, long logs)
+    if (lines.length <= MAX_TOOL_RESULT_LINES) {
+      return text.slice(0, MAX_TOOL_RESULT_CHARS) + "\n\n[... truncated by CodePrune (" + (text.length - MAX_TOOL_RESULT_CHARS) + " chars removed) ...]";
+    }
+
+    // Many-line content: keep head + tail
     const head = lines.slice(0, TRUNCATION_HEAD_LINES).join("\n");
     const tail = lines.slice(-TRUNCATION_TAIL_LINES).join("\n");
     const skipped = lines.length - TRUNCATION_HEAD_LINES - TRUNCATION_TAIL_LINES;
+    if (skipped <= 0) return null;
 
     return `${head}\n\n[... ${skipped} lines truncated by CodePrune ...]\n\n${tail}`;
   }
 
+  // FIX O-2: Proper git status section boundary + "?? " with space
   private pruneGitStatus(system: any[]): boolean {
     let modified = false;
 
@@ -150,31 +177,54 @@ export class TokenOptimizer {
       if (!block.text.includes("gitStatus:")) continue;
 
       const lines = block.text.split("\n");
-      const statusStart = lines.findIndex((l: string) => l.includes("Status:"));
+      const statusStart = lines.findIndex((l: string) => /^Status:/.test(l.trim()) && !l.includes("gitStatus"));
       if (statusStart === -1) continue;
 
       let untrackedCount = 0;
       const maxUntracked = 5;
       const filteredLines: string[] = [];
+      let inStatusSection = false;
+      let blockModified = false;
 
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
-        if (i > statusStart && line.startsWith("??")) {
+
+        if (i === statusStart) {
+          inStatusSection = true;
+          filteredLines.push(line);
+          continue;
+        }
+
+        // Detect end of status section (non-status line after status started)
+        if (inStatusSection && line.trim() !== "" &&
+            !line.startsWith("??") && !line.startsWith(" M") && !line.startsWith(" D") &&
+            !line.startsWith("M ") && !line.startsWith("A ") && !line.startsWith("D ") &&
+            !line.startsWith("R ") && !line.startsWith(" A") && !line.startsWith("m ")) {
+          // Check if it looks like a git status line (single char + space + path)
+          const isStatusLine = /^[MADRCU?! ]{1,2}\s/.test(line);
+          if (!isStatusLine) {
+            inStatusSection = false;
+            filteredLines.push(line);
+            continue;
+          }
+        }
+
+        if (inStatusSection && line.startsWith("?? ")) {
           untrackedCount++;
           if (untrackedCount <= maxUntracked) {
             filteredLines.push(line);
           } else if (untrackedCount === maxUntracked + 1) {
             filteredLines.push("[... more untracked files hidden by CodePrune]");
-            modified = true;
+            blockModified = true;
           }
-          // Skip remaining untracked
         } else {
           filteredLines.push(line);
         }
       }
 
-      if (modified) {
+      if (blockModified) {
         block.text = filteredLines.join("\n");
+        modified = true;
       }
     }
 
@@ -187,10 +237,12 @@ export class TokenOptimizer {
     const instruction =
       "\n<codeprune-optimization>\nToken optimization active. Be maximally concise: no preamble, no trailing summaries, no restating what was asked. Code-only responses when possible. Skip explanations unless explicitly asked.\n</codeprune-optimization>\n";
 
-    const lastBlock = system[system.length - 1];
-    if (typeof lastBlock.text === "string") {
-      lastBlock.text += instruction;
-      return true;
+    // Walk backwards to find last text block
+    for (let i = system.length - 1; i >= 0; i--) {
+      if (typeof system[i].text === "string") {
+        system[i].text += instruction;
+        return true;
+      }
     }
 
     return false;

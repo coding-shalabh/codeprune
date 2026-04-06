@@ -42,6 +42,7 @@ export class MetricsStore {
   constructor(dbPath: string = "codeprune.db") {
     this.db = new Database(dbPath);
     this.db.run("PRAGMA journal_mode = WAL");
+    this.db.run("PRAGMA busy_timeout = 5000");
     this.db.run(`
       CREATE TABLE IF NOT EXISTS requests (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -60,6 +61,12 @@ export class MetricsStore {
   }
 
   record(metric: RequestMetric): void {
+    // FIX M-4: Reject negative/NaN token counts
+    if (!Number.isFinite(metric.inputTokensOriginal) || metric.inputTokensOriginal < 0 ||
+        !Number.isFinite(metric.inputTokensOptimized) || metric.inputTokensOptimized < 0) {
+      console.error("[CodePrune] Refusing to record invalid token counts:", metric);
+      return;
+    }
     this.db.run(
       `INSERT INTO requests (timestamp, model, input_tokens_original, input_tokens_optimized, output_tokens, cache_read_tokens, cache_write_tokens, auth_type, optimizations, mode)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -96,7 +103,14 @@ export class MetricsStore {
         row.totalInputOriginal > 0
           ? (totalSaved / row.totalInputOriginal) * 100
           : 0;
-      const costSaved = (totalSaved / 1_000_000) * 3;
+      // FIX M-1: Model-aware cost for comparison stats too
+      const costRows = this.db
+        .query(`SELECT model, COALESCE(SUM(input_tokens_original - input_tokens_optimized), 0) as saved FROM requests WHERE mode = ? GROUP BY model`)
+        .all(mode) as any[];
+      let costSaved = 0;
+      for (const r of costRows) {
+        costSaved += (r.saved / 1_000_000) * getInputPrice(r.model);
+      }
 
       return {
         totalRequests: row.totalRequests,
@@ -135,7 +149,7 @@ export class MetricsStore {
 
     // Model-aware cost: calculate per-row using actual model pricing
     const costRows = this.db
-      .query(`SELECT model, SUM(input_tokens_original - input_tokens_optimized) as saved FROM requests GROUP BY model`)
+      .query(`SELECT model, COALESCE(SUM(input_tokens_original - input_tokens_optimized), 0) as saved FROM requests GROUP BY model`)
       .all() as any[];
     let costSaved = 0;
     for (const r of costRows) {
