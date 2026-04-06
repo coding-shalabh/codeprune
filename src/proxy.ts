@@ -88,8 +88,11 @@ app.all("/v1/*", async (c) => {
         body.system = result.system;
       }
       if (result.optimizations.length > 0) {
+        const pct = result.inputTokensOriginal > 0
+          ? Math.round((1 - result.inputTokensOptimized / result.inputTokensOriginal) * 100)
+          : 0;
         console.log(
-          `[CodePrune] Optimized: ${result.inputTokensOriginal} -> ${result.inputTokensOptimized} tokens (${result.optimizations.join(", ")})`
+          `[CodePrune] Optimized: ~${pct}% reduction (${result.optimizations.join(", ")})`
         );
       }
     } else {
@@ -140,12 +143,22 @@ app.all("/v1/*", async (c) => {
   const responseBody = await upstreamResp.json();
 
   if (optimizeResult && responseBody.usage) {
-    // Use Anthropic's actual input_tokens as ground truth for optimized count
-    const actualInputTokens = responseBody.usage.input_tokens || optimizeResult.inputTokensOptimized;
+    // Anthropic's actual token count = ground truth for what was sent
+    const actualInputTokens = responseBody.usage.input_tokens || 0;
+
+    // Project what original would have been using the optimization ratio
+    // ratio = est_original / est_optimized, then apply to actual
+    const estRatio = optimizeResult.inputTokensOptimized > 0
+      ? optimizeResult.inputTokensOriginal / optimizeResult.inputTokensOptimized
+      : 1;
+    const projectedOriginal = MODE === "optimized"
+      ? Math.round(actualInputTokens * estRatio)
+      : actualInputTokens; // passthrough: actual IS original
+
     metrics.record({
       timestamp: Date.now(),
       model: body.model || "unknown",
-      inputTokensOriginal: optimizeResult.inputTokensOriginal,
+      inputTokensOriginal: projectedOriginal,
       inputTokensOptimized: actualInputTokens,
       outputTokens: responseBody.usage.output_tokens || 0,
       cacheReadTokens: responseBody.usage.cache_read_input_tokens || 0,
@@ -193,11 +206,19 @@ async function extractStreamUsage(
     }
 
     if (lastUsage) {
-      const actualInputTokens = lastUsage.input_tokens || optimizeResult.inputTokensOptimized;
+      const actualInputTokens = lastUsage.input_tokens || 0;
+
+      const estRatio = optimizeResult.inputTokensOptimized > 0
+        ? optimizeResult.inputTokensOriginal / optimizeResult.inputTokensOptimized
+        : 1;
+      const projectedOriginal = currentMode === "optimized"
+        ? Math.round(actualInputTokens * estRatio)
+        : actualInputTokens;
+
       metrics.record({
         timestamp: Date.now(),
         model: model || "unknown",
-        inputTokensOriginal: optimizeResult.inputTokensOriginal,
+        inputTokensOriginal: projectedOriginal,
         inputTokensOptimized: actualInputTokens,
         outputTokens: lastUsage.output_tokens || 0,
         cacheReadTokens: lastUsage.cache_read_input_tokens || 0,

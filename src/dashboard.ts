@@ -289,7 +289,7 @@ export function getDashboardHTML(): string {
 
     <div class="bx b-hero">
       <div class="hero-n" id="big-pct">0%</div>
-      <div class="hero-t">Total Token Savings</div>
+      <div class="hero-t">Total Token Savings (Anthropic API actual)</div>
     </div>
 
     <div class="bx b-sav">
